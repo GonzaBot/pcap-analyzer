@@ -1,299 +1,85 @@
-# 🔍 PCAP Analyzer - Network Forensics Engine
-**Herramienta de Análisis Forense en Tiempo Real de Capturas de Tráfico de Red**
+# ◈ PCAP Analyzer: Network Forensics Tool 🕵️‍♂️🛡️
 
-![Python](https://img.shields.io/badge/Python-3.10+-blue) ![License](https://img.shields.io/badge/License-MIT-yellow) ![Scapy](https://img.shields.io/badge/Scapy-2.7.0-green) ![Status](https://img.shields.io/badge/Status-Production-brightgreen)
-
-[!IMPORTANT]
-> **⚠️ AVISO LEGAL Y ÉTICO / LEGAL & ETHICAL DISCLAIMER**
-> 
-> **ES:** No analizar tráfico de red de terceros sin autorización previa explícita. Esta herramienta ha sido creada exclusivamente con fines educativos, de investigación forense autorizada y análisis de seguridad en entornos controlados.
-> 
-> **EN:** Do not analyze third-party network traffic without explicit prior authorization. This tool is created for educational purposes, authorized forensic investigation, and security analysis in controlled environments only.
+**PCAP Analyzer** es una solución avanzada de análisis forense de red desarrollada en Python. Su objetivo es transformar capturas de tráfico crudas en inteligencia accionable, permitiendo a analistas de seguridad y estudiantes de ciberseguridad identificar amenazas, exfiltración de datos y anomalías de red a través de una interfaz gráfica intuitiva y reportes detallados.
 
 ---
 
-## 🎯 Descripción General
+## 📋 Requisitos de Captura
 
-**PCAP Analyzer** es una herramienta profesional de análisis forense de red que detecta patrones anómalos, ataques activos y comportamientos sospechosos en capturas de tráfico PCAP/PCAPNG. Utiliza heurística avanzada basada en estadística y machine learning patterns para identificar:
+Para que la herramienta realice un análisis efectivo, necesitas un archivo de tráfico de red en formato `.pcap` o `.pcapng`. Estos archivos pueden generarse mediante:
 
-- **Beaconing:** Comunicación periódica con servidores C2 (Command & Control)
-- **DNS Tunneling:** Tunelización de datos maliciosos sobre DNS
-- **Port Scanning:** Exploración sistemática de puertos en búsqueda de vulnerabilidades
-- **SYN Floods:** Ataques DDoS basados en inundación de paquetes SYN
-- **ARP Spoofing:** Ataques Man-in-the-Middle mediante suplantación ARP
-- **TCP Retransmissions:** Análisis granular de retransmisiones por puerto y flujo
-- **Data Exfiltration:** Detección de transferencias masivas de datos sospechosas
-- **DGA/DNS Masivo:** Identificación de algoritmos generadores de dominios
-- **ICMP Floods:** Ataques de negación de servicio mediante ICMP
+* **Wireshark:** La herramienta estándar de la industria. Captura el tráfico de tu interfaz y utiliza `Archivo > Guardar como...` para generar el archivo.
+* **tcpdump:** Ideal para entornos de servidor o terminal. Usa el comando `tcpdump -i [interfaz] -w captura.pcap`.
+* **Tshark:** La versión de línea de comandos de Wireshark.
 
 ---
 
-## ✨ Características Destacadas
+## 🛠️ Instalación y Configuración
 
-### 🔬 Análisis Profundo por Flujo TCP
-- Desglose **origen:puerto → destino:puerto**
-- Conteo de paquetes y volumen de datos por conexión
-- Detección de retransmisiones granulares
-- Identificación de patrones de exfiltración
+Sigue las instrucciones según tu sistema operativo para preparar el entorno.
 
-### 📊 Estadísticas Completas
-- Paquetes totales procesados
-- IPs únicas identificadas
-- Conexiones TCP activas
-- Consultas DNS y dominios únicos
-- Retransmisiones TCP detalladas
+### 🐧 En Linux (Ubuntu, Kali, Debian)
 
-### 🎨 Interfaz Gráfica Moderna
-- Tema oscuro profesional (cybersecurity aesthetic)
-- Dos tabs: Consola de análisis + Hallazgos detallados
-- Barra de progreso en tiempo real
-- Código HTML interactivo para reportes
+Abre una terminal y ejecuta los siguientes comandos:
 
-### 📄 Generación de Reportes
-- Reporte HTML profesional con gráficos CSS
-- Almacenamiento automático en carpeta Descargas
-- Clasificación de riesgos: CRITICAL, HIGH, MEDIUM, LOW, INFO
-- Recomendaciones accionables para cada hallazgo
+1.  **Clonar el repositorio:**
+    ```bash
+    git clone [https://github.com/GonzaBot/pcap-analyzer.git](https://github.com/GonzaBot/pcap-analyzer.git)
+    ```
+2.  **Entrar al directorio:**
+    ```bash
+    cd pcap-analyzer
+    ```
+3.  **Configurar dependencias:**
+    Otorga permisos de ejecución al script de configuración y ejecútalo:
+    ```bash
+    chmod +x setup.sh
+    ./setup.sh
+    ```
+4.  **Permisos del programa:**
+    Dale permisos de ejecución al archivo principal:
+    ```bash
+    chmod +x pcap_analyzer.py
+    ```
 
----
+### 🪟 En Windows
 
-## 🛠️ Instalación y Uso
-
-### Requisitos Previos
-- **Python 3.10+** (se recomienda 3.11 o superior)
-- **pip** (gestor de paquetes de Python)
-- Sistema operativo: Windows, macOS o Linux
-
-### Opción 1: En tu PC original (con el venv existente)
-
-Si **ya tienes el proyecto configurado:**
-
-```bash
-# Navega a la carpeta del proyecto
-cd "c:\Users\OneDrive\pcap analyzer"
-# Ejecuta la aplicación
-python setup.sh
-```
-# Ejecuta la aplicación
-python pcap_analyzer.py
-```
-
-### Opción 2: Descargar en OTRA PC (sin venv)
-
-#### Paso 1: Descargar y preparar archivos
-
-```bash
-# Clona o descarga el proyecto en la nueva PC
-git clone <repo-url>
-# O descarga el ZIP y extrae en una carpeta, ejemplo:
-# C:\Users\TUUSUARIO\Desktop\pcap-analyzer
-```
-
-#### Paso 2: Crear un entorno virtual nuevo
-
-```bash
-# Navega a la carpeta del proyecto
-cd "C:\Users\TUUSUARIO\Desktop\pcap-analyzer"
-
-# Crea un nuevo entorno virtual
-python -m venv .venv
-
-# Activa el entorno (Windows)
-.\.venv\Scripts\Activate.ps1
-
-# Activa el entorno (macOS/Linux)
-source .venv/bin/activate
-```
-
-#### Paso 3: Instalar dependencias
-
-```bash
-# Instala scapy (única dependencia externa)
-pip install scapy
-
-# Verifica que scapy está instalado
-pip list | grep scapy
-```
-
-#### Paso 4: Ejecutar la aplicación
-
-```bash
-# Windows
-python pcap_analyzer.py
-
-# macOS/Linux
-python3 pcap_analyzer.py
-```
+1.  Descarga el repositorio o clónalo con Git.
+2.  Entra en la carpeta del proyecto.
+3.  Ejecuta el archivo **`setup.bat`** haciendo doble clic. Este script se encargará de instalar las librerías necesarias (Scapy) mediante `pip`.
 
 ---
 
-## 📖 Guía de Uso Rápido
+## 🚀 Modo de Uso
 
-### 1. **Cargar un archivo PCAP**
-- Haz clic en el botón **"Explorar"** 
-- Selecciona un archivo `.pcap`, `.pcapng` o `.cap`
+Una vez instalado, el flujo de trabajo es extremadamente sencillo:
 
-### 2. **Iniciar análisis**
-- Haz clic en **"▶ Analizar"**
-- La barra de progreso mostrará el estado en tiempo real
-- Los dos tabs se llenarán con:
-  - **Tab Consola:** Resumen ejecutivo y estadísticas
-  - **Tab Hallazgos:** Análisis detallado de cada amenaza
-
-### 3. **Generar reporte HTML**
-- Al completarse el análisis, se genera automáticamente `pcap_report_YYYYMMDD_HHMMSS.html`
-- Se guarda en tu carpeta **Descargas**
-- Haz clic en **"↗ Abrir reporte"** para visualizarlo en el navegador
-
-### 4. **Interpretar los resultados**
-
-#### Ejemplo: Retransmisiones TCP con detalle de puertos
-```
-[HIGH] Alto número de retransmisiones TCP
-
-Ejemplos detectados:
-  • 192.168.1.100:52341 → 10.0.0.5:443  |  15 retransmisiones
-  • 192.168.1.101:49999 → 10.0.0.5:3306  |  8 retransmisiones
-```
-
-#### Ejemplo: Top Conexiones TCP
-```
-── TOP CONEXIONES TCP (por volumen) ────────────────
-  192.168.1.100:52341 → 10.0.0.5:443     1245 paqts   4520.5 KB
-  192.168.1.102:60123 → 8.8.8.8:53         856 paqts    125.3 KB
-```
+1.  **Ejecución:** Haz **doble clic** directamente en el archivo `pcap_analyzer.py`.
+2.  **Carga:** En la interfaz, presiona el botón **"Explorar"** y selecciona tu archivo de captura (`.pcap`).
+3.  **Análisis:** Haz clic en **"Analizar"**. El motor procesará cada paquete buscando patrones de ataque.
+4.  **Resultados:** Al finalizar, se generará automáticamente un **Reporte Interactivo HTML** en tu carpeta de descargas. Puedes visualizar un resumen de los hallazgos directamente en la pestaña de la aplicación.
 
 ---
 
-## 🔐 Conceptos de Ciberseguridad
+## 🧠 Inteligencia de Análisis: Patrones Detectados
 
-### Beaconing (C2 Communication)
-Un implante de malware que se reporta periódicamente a su servidor de control. **PCAP Analyzer** detecta comunicación con:
-- **Matriz de variación < 18%:** Comunicación extremadamente regular
-- **Intervalo 4-900 segundos:** Patrón típico de RATs y botnets
+El motor de **PCAP Analyzer** utiliza heurística y análisis estadístico para detectar los siguientes vectores de ataque:
 
-### DNS Tunneling (Data Exfiltration)
-Abuso del protocolo DNS para ocultar datos. Se detecta mediante:
-- **Entropía de Shannon > 3.6 bits:** Aleatorización sospechosa
-- **Dominios > 52 caracteres:** Codificación Base64/Hex dentro de subdominios
-
-### Port Scanning (Reconnaissance)
-Mapeo de servicios antes de un ataque. Indicador:
-- **IP que contacta > 35 puertos distintos:** Patrón de escáner (Nmap, Masscan)
-
-### ARP Spoofing (MITM Attack)
-Suplantación de identidad en la red local. Detector:
-- **Una IP responde con múltiples MACs:** Intercepción de tráfico
+* **DNS Tunneling:** Identifica consultas DNS con dominios de alta entropía (entropía de Shannon > 3.6) o excesivamente largos, lo cual es un indicador crítico de exfiltración de datos o túneles de comando y control (C2).
+* **Beaconing (C2):** Detecta comunicaciones periódicas y constantes entre una IP interna y una externa, patrón clásico utilizado por el malware para recibir instrucciones de servidores remotos.
+* **Escaneo de Puertos (Port Scanning):** Alerta cuando un solo host intenta conectarse a una cantidad inusual de puertos en un corto periodo de tiempo (táctica de reconocimiento).
+* **SYN Flood (DoS):** Identifica ráfagas de paquetes TCP SYN sin el correspondiente flujo de finalización, técnica utilizada para agotar los recursos de un servidor.
+* **ARP Spoofing:** Detecta inconsistencias en las tablas ARP, alertando si una dirección IP está siendo reclamada por múltiples direcciones MAC (Ataque Man-in-the-Middle).
+* **Exfiltración de Datos:** Resalta flujos de tráfico sospechosamente grandes hacia IPs externas que podrían indicar el robo de información sensible.
+* **Algoritmos DGA:** Identifica patrones de consultas DNS fallidas masivas, comunes en malware que busca dominios generados dinámicamente para evadir listas negras.
+* **Retransmisiones Anómalas:** Analiza la salud del tráfico TCP buscando paquetes duplicados que puedan indicar interceptación o problemas críticos de red.
+* **ICMP Flood:** Detecta inundaciones de paquetes de "ping" utilizados para denegación de servicio o descubrimiento agresivo de hosts.
 
 ---
 
-## 📊 Estructura de Archivos
+## ⚖️ Descargo de Responsabilidad (Disclaimer)
 
-```
-pcap-analyzer/
-├── pcap_analyzer.py          # Aplicación principal
-├── README.md                  # Este archivo
-├── .venv/                     # Entorno virtual (no incluir en descargas)
-│   ├── Scripts/
-│   ├── Lib/
-│   └── pyvenv.cfg
-└── (Archivos .pcap de prueba opcionales)
-```
-
-### Archivos a descargar en otra PC
-```
-✓ pcap_analyzer.py
-✓ README.md
-✗ .venv/                      (NO incluir, se crea nuevo)
-```
+Este software ha sido desarrollado exclusivamente con fines **educativos, académicos y de auditoría ética**. El uso de esta herramienta para interceptar o analizar tráfico en redes sin la autorización explícita de los propietarios es ilegal. El autor no se hace responsable por el mal uso que se le pueda dar a este código o a la información obtenida a través de él. **Úsala siempre dentro de la legalidad y la ética profesional.**
 
 ---
-
-## 🚀 Comandos Útiles
-
-### Crear captura PCAP en tiempo real (Linux/macOS):
-```bash
-# Capturar 1000 paquetes de la interfaz eth0
-sudo tcpdump -i eth0 -c 1000 -w captura.pcap
-
-# Capturar del puerto 443 (HTTPS)
-sudo tcpdump -i eth0 -w https_traffic.pcap port 443
-```
-
-### En Windows (requiere Npcap o Wireshark):
-```bash
-# Usar tshark (incluido en Wireshark)
-tshark -i "Ethernet" -c 1000 -w captura.pcap
-```
-
----
-
-## ⚠️ Solución de Problemas
-
-### Error: `ImportError: No module named 'scapy'`
-```bash
-# Asegúrate de que el venv está activado
-.\.venv\Scripts\Activate.ps1
-
-# Reinstala scapy
-pip install --upgrade scapy
-```
-
-### Error: `_tkinter.TclError: invalid color name`
-- Este error ha sido corregido en la última versión
-- Si persiste, realiza un `pip install --upgrade scapy`
-
-### Archivo PCAP no se carga
-- Verifica que el archivo existe en la ruta especificada
-- Asegúrate de que es un archivo válido `.pcap` o `.pcapng`
-- Intenta abrirlo primero con Wireshark para validarlo
-
-### La GUI no aparece
-- En Linux/macOS, asegúrate de tener X11 o Wayland configurado
-- En Windows, verifica que Python de Stack Overflow está instalado con Tkinter
-
----
-
-## 📋 Checklist de Instalación en Nueva PC
-
-- [ ] Python 3.10+ instalado
-- [ ] Carpeta del proyecto descargada
-- [ ] Entorno virtual creado (`.venv`)
-- [ ] Entorno virtual activado
-- [ ] Scapy instalado (`pip install scapy`)
-- [ ] Archivo PCAP disponible para análisis
-- [ ] Aplicación ejecutada correctamente (`python pcap_analyzer.py`)
-
----
-
-## 🤝 Soporte y Actualizaciones
-
-Para reportar bugs, sugerencias o mejoras:
-1. Verifica que tienes la última versión de Scapy: `pip install --upgrade scapy`
-2. Prueba con un PCAP diferente
-3. Consulta los archivos `.log` en la carpeta de la aplicación
-
----
-
-## 📝 Licencia
-
-MIT License - Libre para uso educativo y forense autorizado.
-
----
-
-## 🎓 Recursos Educativos
-
-- **Scapy Documentation:** https://scapy.readthedocs.io/
-- **RFC 8996 (TLS 1.3):** https://tools.ietf.org/html/rfc8996
-- **OWASP Network Testing Guide:** https://owasp.org/www-project-web-security-testing-guide/
-- **Wireshark User Guide:** https://www.wireshark.org/docs/
-
----
-
-**Última actualización:** Abril 2026  
-**Versión:** 1.0 Production  
-**Autor:** Gonzalo (Reto 100 Apps de Ciberseguridad)
-
----
-
-> ¡Usa esta herramienta de forma responsable y ética! 🔐
+*Creado con pasión por [GonzaBot](https://github.com/GonzaBot)*
