@@ -40,6 +40,7 @@ Abre una terminal y ejecuta los siguientes comandos:
     Dale permisos de ejecución al archivo principal:
     ```bash
     chmod +x pcap_analyzer.py
+    sudo python3 pcap_analyzer.py
     ```
 
 ### 🪟 En Windows
