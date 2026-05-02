@@ -1,9 +1,33 @@
-# Entorno virtual - NO DESCARGAR
+# Entornos virtuales y variables locales - NO SUBIR
 .venv/
 venv/
 env/
 ENV/
 .env
+.env.*
+!.env.example
+!.env.sample
+
+# Secretos, credenciales y certificados
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+*.jks
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+*.kdbx
+*.asc
+*.gpg
+secrets.*
+credentials.*
+config.local.*
+*.secret
+*.token
 
 # Cachés de Python
 __pycache__/
@@ -41,10 +65,38 @@ wheels/
 Thumbs.db
 .Thumbs.db
 
-# Reportes locales (opcional - descomenta si quieres compartir)
-# pcap_report_*.html
+# Reportes y salidas generadas por análisis
+pcap_report_*.html
+reports/
+output/
+outputs/
+exports/
+artifacts/
+*.log
+*.tmp
+*.temp
+*.bak
+*.backup
+*.sqlite
+*.sqlite3
+*.db
+*.csv
+*.tsv
+*.jsonl
 
-# Archivos de prueba grandes
+# Configuración local de herramientas
+.cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.agents/
+.codex/
+
+# Capturas de tráfico: pueden contener IPs, DNS, cookies o credenciales
 *.pcap
 *.pcapng
 *.cap
+*.pcap.gz
+*.pcapng.gz

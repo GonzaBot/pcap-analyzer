@@ -66,7 +66,7 @@ Una vez instalado, el flujo de trabajo es extremadamente sencillo:
 
 El motor de **PCAP Analyzer** utiliza heurística y análisis estadístico para detectar los siguientes vectores de ataque:
 
-* **DNS Tunneling:** Identifica consultas DNS con dominios de alta entropía (entropía de Shannon > 3.6) o excesivamente largos, lo cual es un indicador crítico de exfiltración de datos o túneles de comando y control (C2).
+* **DNS Tunneling:** Identifica consultas DNS con labels largos, alta entropía y señales de payload codificado, agrupadas por dominio base para reducir falsos positivos con CDN, telemetría y servicios legítimos.
 * **Beaconing (C2):** Detecta comunicaciones periódicas y constantes entre una IP interna y una externa, patrón clásico utilizado por el malware para recibir instrucciones de servidores remotos.
 * **Escaneo de Puertos (Port Scanning):** Alerta cuando un solo host intenta conectarse a una cantidad inusual de puertos en un corto periodo de tiempo (táctica de reconocimiento).
 * **SYN Flood (DoS):** Identifica ráfagas de paquetes TCP SYN sin el correspondiente flujo de finalización, técnica utilizada para agotar los recursos de un servidor.

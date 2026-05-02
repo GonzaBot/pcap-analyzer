@@ -18,8 +18,10 @@ from collections import Counter, defaultdict
 try:
     from scapy.all import rdpcap, DNS, DNSQR, TCP, IP, ARP, UDP, Raw, Ether
     SCAPY_OK = True
-except ImportError:
+    SCAPY_IMPORT_ERROR = None
+except Exception as e:
     SCAPY_OK = False
+    SCAPY_IMPORT_ERROR = e
 
 # ─── Paleta de colores ────────────────────────────────────────────────────────
 C = {
@@ -64,7 +66,176 @@ def shannon_entropy(data: str) -> float:
     return -sum((c / length) * math.log2(c / length) for c in freq.values())
 
 
+# ─── Whitelist de dominios confiables ────────────────────────────────────────
+# Agregar aquí cualquier dominio legítimo adicional.
+# La coincidencia es exacta O como sufijo (*.dominio.com).
+TRUSTED_DOMAINS = [
+    "google.com",
+    "googleapis.com",
+    "gstatic.com",
+    "microsoft.com",
+    "live.com",
+    "office.com",
+    "windows.com",
+    "cloudflare.com",
+    "amazon.com",
+    "amazonaws.com",
+    "akamai.com",
+    "akamaized.net",
+    "akamaitechnologies.com",
+    "fastly.com",
+    "fastlylb.net",
+    "apple.com",
+    "icloud.com",
+    "mozilla.org",
+    "firefox.com",
+    "gvt2.com",
+    "googleusercontent.com",
+    "googlesyndication.com",
+    "googleadservices.com",
+    "google-analytics.com",
+    "googlezip.net",
+    "recaptcha.net",
+    "github.com",
+    "githubusercontent.com",
+]
+
+def is_trusted_domain(fqdn: str) -> bool:
+    """Devuelve True si el FQDN pertenece a un dominio de la whitelist."""
+    fqdn = fqdn.lower().rstrip(".")
+    for trusted in TRUSTED_DOMAINS:
+        if fqdn == trusted or fqdn.endswith("." + trusted):
+            return True
+    return False
+
+
+def _longest_label(fqdn: str) -> str:
+    """Devuelve el label (parte entre puntos) más largo del FQDN."""
+    parts = fqdn.rstrip(".").split(".")
+    return max(parts, key=len) if parts else fqdn
+
+
+def _base_domain(fqdn: str) -> str:
+    """Devuelve una aproximación simple del dominio registrable."""
+    parts = fqdn.lower().rstrip(".").split(".")
+    return ".".join(parts[-2:]) if len(parts) >= 2 else fqdn.lower().rstrip(".")
+
+
+def looks_like_dns_tunnel_label(label: str) -> bool:
+    """
+    Heurística conservadora para payloads embebidos en DNS.
+    Requiere longitud y entropía altas, más señales de codificación.
+    """
+    clean = label.strip("-_").lower()
+    if len(clean) < 50:
+        return False
+
+    digits = sum(1 for c in clean if c.isdigit())
+    alpha = sum(1 for c in clean if c.isalpha())
+    unique_chars = len(set(clean))
+    digit_ratio = digits / max(len(clean), 1)
+    alpha_ratio = alpha / max(len(clean), 1)
+    hex_chars = sum(1 for c in clean if c in "0123456789abcdef")
+    base32_chars = sum(1 for c in clean if c in "abcdefghijklmnopqrstuvwxyz234567")
+    hex_ratio = hex_chars / max(len(clean), 1)
+    base32_ratio = base32_chars / max(len(clean), 1)
+
+    entropy = shannon_entropy(clean)
+    if entropy < 4.0 and not (entropy >= 3.4 and hex_ratio >= 0.92):
+        return False
+
+    looks_encoded = (
+        digit_ratio >= 0.12
+        or unique_chars >= 18
+        or hex_ratio >= 0.92
+        or (alpha_ratio >= 0.85 and base32_ratio >= 0.92)
+    )
+    return looks_encoded
+
+
+def find_suspicious_dns_queries(dns_queries):
+    """
+    Recibe [(qname, timestamp), ...] y devuelve consultas compatibles con DNS tunneling.
+    El resultado contiene tuplas (qname, entropy, label).
+    """
+    suspicious_dns_by_base = defaultdict(list)
+    for qname, ts in dns_queries:
+        if is_trusted_domain(qname):
+            continue
+        label = _longest_label(qname)
+        entropy = shannon_entropy(label)
+        if looks_like_dns_tunnel_label(label):
+            item = (qname, entropy, label)
+            suspicious_dns_by_base[_base_domain(qname)].append(item)
+
+    suspicious_dns = []
+    for base, items in suspicious_dns_by_base.items():
+        unique_payloads = {label for _, _, label in items}
+        very_long_payload = any(len(label) >= 90 for _, _, label in items)
+        if len(unique_payloads) >= 3 or very_long_payload:
+            suspicious_dns.extend(items)
+    return suspicious_dns
+
+
+def looks_like_dga(domain: str) -> bool:
+    """
+    Análisis léxico: devuelve True si el dominio parece generado algorítmicamente.
+    Criterios: alta ratio de consonantes, clusters consonánticos, patrones hex/base64.
+    """
+    import re
+    # Analizar solo el segundo nivel (ej. "xkf3a9" de "xkf3a9.com")
+    parts = domain.split(".")
+    name = parts[0] if parts else domain
+    if len(name) < 5:
+        return False
+
+    name_lower = name.lower()
+    alpha_chars = [c for c in name_lower if c.isalpha()]
+    total_alpha = len(alpha_chars)
+
+    # Criterio 1 — Patrón hexadecimal largo (≥8 chars hex consecutivos)
+    if re.search(r'[0-9a-f]{8,}', name_lower):
+        return True
+
+    # Criterio 2 — Patrón base64-like (mezcla densa de letras+dígitos, ≥16 chars)
+    if re.search(r'[a-z0-9]{16,}', name_lower) and re.search(r'\d', name_lower):
+        digit_ratio = sum(1 for c in name_lower if c.isdigit()) / max(len(name), 1)
+        if digit_ratio > 0.25:
+            return True
+
+    # Criterio 3 — Cluster de consonantes: ≥4 consonantes seguidas
+    consonants = set("bcdfghjklmnpqrstvwxyz")
+    max_consec = cur_consec = 0
+    for ch in name_lower:
+        if ch in consonants:
+            cur_consec += 1
+            if cur_consec > max_consec:
+                max_consec = cur_consec
+        else:
+            cur_consec = 0
+    if max_consec >= 4:
+        return True
+
+    # Criterio 4 — Ratio global de consonantes > 72 % (strings aleatorios no tienen vocales naturales)
+    if total_alpha >= 7:
+        consonant_ratio = sum(1 for c in alpha_chars if c in consonants) / total_alpha
+        if consonant_ratio > 0.72:
+            return True
+
+    # Criterio 5 — Muy pocas vocales relativas a la longitud total
+    vowels = set("aeiou")
+    vowel_count = sum(1 for c in name_lower if c in vowels)
+    if len(name) >= 9 and total_alpha > 0 and vowel_count / len(name) < 0.12:
+        return True
+
+    return False
+
+
 def analyze_pcap(filepath: str, progress_callback=None) -> dict:
+    if not SCAPY_OK:
+        detail = f": {SCAPY_IMPORT_ERROR}" if SCAPY_IMPORT_ERROR else ""
+        raise RuntimeError(f"Scapy no está disponible o no pudo inicializarse{detail}")
+
     findings = {
         "metadata": {},
         "findings": [],
@@ -179,17 +350,16 @@ def analyze_pcap(filepath: str, progress_callback=None) -> dict:
         progress_callback(76)
 
     # ─── Detección 1: DNS Tunneling ──────────────────────────────────────────
-    suspicious_dns = []
-    for qname, ts in dns_queries:
-        subdomain = qname.split(".")[0] if "." in qname else qname
-        entropy   = shannon_entropy(subdomain)
-        if len(qname) > 52 or entropy > 3.6:
-            suspicious_dns.append((qname, entropy))
+    # Se evalúa el label más largo del FQDN (no el FQDN completo) para evitar
+    # falsos positivos con dominios legítimamente largos por diseño.
+    # Además, se agrupa por dominio base: un único dominio largo suele ser
+    # telemetría/CDN/tracking; un túnel real normalmente emite varios payloads.
+    suspicious_dns = find_suspicious_dns_queries(dns_queries)
 
     if suspicious_dns:
         examples = "\n".join(
-            f"  • {q[:80]}  (entropía: {e:.2f})"
-            for q, e in suspicious_dns[:4]
+            f"  • {q[:80]}  (label: '{lbl[:40]}…'  entropía: {e:.2f})"
+            for q, e, lbl in suspicious_dns[:4]
         )
         findings["findings"].append({
             "id":    "DNS_TUNNELING",
@@ -197,8 +367,9 @@ def analyze_pcap(filepath: str, progress_callback=None) -> dict:
             "risk":  "HIGH",
             "count": len(suspicious_dns),
             "description": (
-                f"Se detectaron {len(suspicious_dns)} consultas DNS con dominios inusualmente "
-                f"largos o con alta entropía de Shannon (> 3.6 bits)."
+                f"Se detectaron {len(suspicious_dns)} consultas DNS con subdominios de alta entropía "
+                f"(>= 4.0 bits), longitud >= 50 caracteres y señales de payload codificado, "
+                f"agrupadas por dominio base y excluyendo dominios conocidos de la whitelist."
             ),
             "cause": (
                 "El DNS tunneling abusa del protocolo DNS para ocultar datos dentro de consultas "
@@ -437,8 +608,16 @@ def analyze_pcap(filepath: str, progress_callback=None) -> dict:
         })
 
     # ─── Detección 8: DGA / Consultas DNS excesivas ───────────────────────────
-    high_dns = [(d, c) for d, c in dns_by_domain.items() if c > 90]
-    high_dns.sort(key=lambda x: -x[1])
+    # Un dominio solo es marcado como DGA si ADEMÁS de alta frecuencia,
+    # parece léxicamente aleatorio (pseudoaleatorio). Los dominios de la
+    # whitelist y los que superan el filtro léxico se descartan.
+    high_dns_raw = [(d, c) for d, c in dns_by_domain.items() if c > 90]
+    high_dns_raw.sort(key=lambda x: -x[1])
+
+    high_dns = [
+        (d, c) for d, c in high_dns_raw
+        if not is_trusted_domain(d) and looks_like_dga(d)
+    ]
 
     if high_dns:
         examples = "\n".join(f"  • {d}  →  {c} consultas" for d, c in high_dns[:4])
@@ -448,7 +627,8 @@ def analyze_pcap(filepath: str, progress_callback=None) -> dict:
             "risk":  "MEDIUM",
             "count": len(high_dns),
             "description": (
-                f"{len(high_dns)} dominio(s) con más de 90 consultas DNS en la captura."
+                f"{len(high_dns)} dominio(s) con más de 90 consultas DNS y patrón léxico "
+                f"pseudoaleatorio consistente con algoritmos de generación de dominios (DGA)."
             ),
             "cause": (
                 "Un Domain Generation Algorithm (DGA) genera automáticamente cientos de dominios "
@@ -494,6 +674,38 @@ def analyze_pcap(filepath: str, progress_callback=None) -> dict:
 
     if progress_callback:
         progress_callback(92)
+
+    # ─── Advertencia: captura en interfaz loopback ────────────────────────────
+    # Si TODAS las IPs observadas son 127.x.x.x, la captura fue tomada en "lo"
+    # y el tráfico real de red no está siendo analizado.
+    all_seen_ips = set(ip_packet_count.keys())
+    if all_seen_ips and all(ip.startswith("127.") for ip in all_seen_ips):
+        findings["findings"].append({
+            "id":    "LOOPBACK_CAPTURE",
+            "title": "Captura en interfaz loopback (lo)",
+            "risk":  "INFO",
+            "count": 1,
+            "description": (
+                "Todas las IPs detectadas pertenecen al rango 127.x.x.x (loopback). "
+                "La captura fue tomada en la interfaz 'lo', que solo registra tráfico local entre "
+                "procesos del mismo host. El tráfico real de red (conexiones TCP/UDP externas, "
+                "DNS hacia internet, etc.) no está siendo capturado ni analizado."
+            ),
+            "cause": (
+                "Al iniciar Wireshark o tcpdump se seleccionó la interfaz 'lo' (loopback) en lugar "
+                "de la interfaz de red real (ej. eth0, ens33, wlan0). "
+                "Las detecciones de este reporte reflejan solo comunicaciones internas al host."
+            ),
+            "examples": (
+                f"  • IPs detectadas: {', '.join(sorted(all_seen_ips)[:8])}"
+            ),
+            "recommendation": (
+                "Volver a capturar seleccionando la interfaz de red real en Wireshark "
+                "(ej. eth0, ens33, wlan0) o con tcpdump -i eth0. "
+                "En Linux: 'ip link show' lista las interfaces disponibles. "
+                "En Windows: usar el nombre de adaptador que muestra Wireshark en la pantalla de inicio."
+            ),
+        })
 
     # Estadísticas generales y conexiones activas
     top_ips_list = sorted(ip_packet_count.items(), key=lambda x: -x[1])[:10]
